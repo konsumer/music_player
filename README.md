@@ -1,4 +1,3 @@
-music_player
-============
+# Simple Music Player
 
-A simple audio player example that uses Angular
+I made this writing [this blog post](http://blog.jetboystudio.com/2013/11/30/angular-music-player).  It's a simple audio player that uses angular.

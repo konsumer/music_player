@@ -1,0 +1,13 @@
+{
+  "name": "fingerprinter",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "rdio-node": "git://github.com/monsur/rdio-node.git",
+    "request": "~2.27.0",
+    "limiter": "~1.0.4",
+    "glob": "~3.2.7",
+    "extend": "~1.2.1"
+  }
+}
