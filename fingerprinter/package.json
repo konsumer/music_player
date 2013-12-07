@@ -1,8 +1,9 @@
 {
-  "name": "fingerprinter",
-  "version": "0.0.0",
+  "name": "fingerprint-echo",
+  "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "lib.js",
+  "bin" : { "fingerprint-echo" : "./fingerprint.js" },
   "dependencies": {
     "rdio-node": "git://github.com/monsur/rdio-node.git",
     "request": "~2.27.0",

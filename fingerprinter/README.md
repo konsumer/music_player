@@ -22,4 +22,21 @@ Make a file called secrets.json in this directory, that looks like this:
 
 ## Running It
 
-`node index.js MP3_DIR OUTPUT_FILE`
+`node fingerprint.js MP3_DIR OUTPUT_FILE`
+
+## Installing
+
+If you want to install `fingerprint-echo` in your path, type `sudo npm install -g`
+
+## Using it, in code
+
+```javascript
+
+var fingerprint = require('fingerprint-echo');
+fingerprint.secrets = {}; // from above
+
+fingerprint(fname, mp3_dir, function(er, data){
+	// do stuff with data
+});
+
+```

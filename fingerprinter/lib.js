@@ -1,14 +1,10 @@
-var	secrets = require('./secrets.json'),
-	RateLimiter = require('limiter').RateLimiter,
+var	RateLimiter = require('limiter').RateLimiter,
 	lmtEco = new RateLimiter(10, 'minute'),
 	Rdio = require('rdio-node').Rdio,
-	rdio = new Rdio(secrets['rdio']),
 	lmtRdio = new RateLimiter(5, 'second'),
 	request = require('request'),
 	exec = require('child_process').exec
-	glob = require('glob'),
-	extend = require('extend'),
-	fs = require('fs');
+	extend = require('extend');
 
 // echonest data-buckets
 var buckets = ["audio_summary", "artist_familiarity", "artist_hotttnesss", "song_hotttnesss", "song_type", "tracks", "id:rdio-US", "id:spotify-WW", "id:musicbrainz", "id:discogs"];
@@ -84,7 +80,7 @@ function analyzeEcho(fname, cb){
 			if (data.metadata){
 				record.metadata = data.metadata;
 			}
-			var r = request.post('http://developer.echonest.com/api/v4/song/identify?api_key=' + secrets['echo'].key + '&format=json', function (er, r, body) {
+			var r = request.post('http://developer.echonest.com/api/v4/song/identify?api_key=' + module.exports.secrets['echo'].key + '&format=json', function (er, r, body) {
 				if (er) return cb('remote echo: ' + er);
 				var bod = JSON.parse(body);
 				if (bod.response.status.code !=0){
@@ -176,80 +172,68 @@ function getOther(track, cb){
 		}
 	}
 	
+	var rdio = new Rdio(module.exports.secrets['rdio'])
 	track.images = [];
 	getRdio();
 }
 
-var records = [];
+var fingerprint = function(fname, dirname, cb){
+	analyzeEcho(fname, function(er, song){
+		if (er) return cb(er);
+		if (!song || !song.id) return cb('could not identify ' + fname);
+		var track = {
+			"id": song.id,
+			"file": fname.replace(dirname + '/','').replace(dirname,''),
+			"title": song.title,
+			"artist.name": song.artist_name,
+			"artist.id": song.artist_id,
+			"artist.familiarity": song.artist_familiarity,
+			"artist.hotttnesss": song.artist_hotttnesss,
+			"hotness": song.song_hotttnesss,
+			"type": song.song_type,
+			"tracks.echo":[],
+			"tracks.rdio":[],
+			"tracks.spotify":[],
+			"tracks.musicbrainz":[],
+			"tracks.discogs":[],
+			"releases.rdio":[],
+			"releases.spotify":[],
+			"releases.musicbrainz":[],
+			"releases.discogs":[]
+		};
+		
+		if (song.audio_summary){
+			track = extend(track, JSON.flatten({audio: JSON.flatten(song.audio_summary)}));
+		}
+		if (song.metadata){
+			track = extend(track, JSON.flatten({meta: JSON.flatten(song.metadata)}));
+		}
 
-if (process.argv.length > 3){
-	glob(process.argv[2]+'/*.mp3', function(er, files){
-		if (er) throw er;
-		files.forEach(function(fname){
-			console.log('looking up', fname);
-			analyzeEcho(fname, function(er, song){
-				if (er) throw er;
-				var track = {
-					"id": song.id,
-					"file": fname.replace(process.argv[2] + '/','').replace(process.argv[2],''),
-					"title": song.title,
-					"artist.name": song.artist_name,
-					"artist.id": song.artist_id,
-					"artist.familiarity": song.artist_familiarity,
-					"artist.hotttnesss": song.artist_hotttnesss,
-					"hotness": song.song_hotttnesss,
-					"type": song.song_type,
-					"tracks.echo":[],
-					"tracks.rdio":[],
-					"tracks.spotify":[],
-					"tracks.musicbrainz":[],
-					"tracks.discogs":[],
-					"releases.rdio":[],
-					"releases.spotify":[],
-					"releases.musicbrainz":[],
-					"releases.discogs":[]
-				};
-				
-				if (song.audio_summary){
-					track = extend(track, JSON.flatten({audio: JSON.flatten(song.audio_summary)}));
-				}
-				if (song.metadata){
-					track = extend(track, JSON.flatten({meta: JSON.flatten(song.metadata)}));
-				}
-
-				if (song.tracks){
-					song.tracks.forEach(function(t){
-						track['tracks.echo'].push(t.id);
-						if (t.catalog){
-							var key = t.catalog.replace('-WW','').replace('-US','');
-							if (t.foreign_id){
-								track['tracks.' + key].push(t.foreign_id.replace(t.catalog+':track:',''));
-							}
-							if (t.foreign_release_id){
-								track['releases.' + key].push(t.foreign_release_id.replace(t.catalog+':release:',''));
-							}
-						}
-					});
-				}
-
-				var s = JSON.unflatten(track);
-				getOther(s, function(er, s){
-					if (s.images.length > 0){
-						s.image = s.images[0];
+		if (song.tracks){
+			song.tracks.forEach(function(t){
+				track['tracks.echo'].push(t.id);
+				if (t.catalog){
+					var key = t.catalog.replace('-WW','').replace('-US','');
+					if (t.foreign_id){
+						track['tracks.' + key].push(t.foreign_id.replace(t.catalog+':track:',''));
 					}
-					// you could save this in a regular database, at this point
-					records.push(s);
-					console.log('got info for', track.file)
-				});
-			})
+					if (t.foreign_release_id){
+						track['releases.' + key].push(t.foreign_release_id.replace(t.catalog+':release:',''));
+					}
+				}
+			});
+		}
+
+		var s = JSON.unflatten(track);
+		getOther(s, function(er, s){
+			if (er) return cb(er);
+			if (s.images.length > 0){
+				s.image = s.images[0];
+			}
+			// you could save this in a regular database, at this point
+			cb(null, s);
 		});
 	});
-}else{
-	console.log('Usage: ', process.argv.slice(0,2).join(' '), 'MP3_DIR OUTFILE')
 }
 
-process.on('exit', function(){
-	if (records.length>0){
-		fs.writeFileSync(process.argv[3], JSON.stringify(records));
-	}
-});
+module.exports = fingerprint;
