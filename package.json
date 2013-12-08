@@ -39,7 +39,12 @@
     "karma-requirejs": "~0.2.0",
     "karma-phantomjs-launcher": "~0.1.1",
     "karma": "~0.10.6",
-    "karma-ng-html2js-preprocessor": "~0.1.0"
+    "karma-ng-html2js-preprocessor": "~0.1.0",
+    "rdio-node": "git://github.com/monsur/rdio-node.git",
+    "request": "~2.27.0",
+    "limiter": "~1.0.4",
+    "glob": "~3.2.7",
+    "extend": "~1.2.1"
   },
   "engines": {
     "node": ">=0.8.0"

@@ -114,7 +114,8 @@ module.exports = function (grunt) {
           src: [
             '.tmp',
             '<%= yeoman.dist %>/*',
-            '!<%= yeoman.dist %>/.git*'
+            '!<%= yeoman.dist %>/.git*',
+            'app/data/'
           ]
         }]
       },
@@ -315,7 +316,48 @@ module.exports = function (grunt) {
         configFile: 'karma.conf.js',
         singleRun: true
       }
+    },
+
+    mp3data: {
+      build: {
+        'configFile': './fingerprinter/secrets.json',
+        'files':{
+          'app/data/music.json':['app/mp3/*.mp3']
+        }
+      }
     }
+
+  });
+
+  // build MP3 data from files
+  grunt.registerMultiTask('mp3data', 'Generate data about mp3s', function() {
+    var done = this.async();
+    var data = this.data;
+    var files = Object.keys(data.files);
+
+    var path = require('path');
+    var fs = require('fs');
+    var fingerprint = require('./fingerprinter/lib.js');
+    fingerprint.secrets = data.configFile ? require(data.configFile) : data.secrets;
+
+    files.forEach(function(f, fi){
+      var expanded = grunt.file.expand(data.files[f]);
+      expanded.forEach(function(g, gi){
+        var datas = [];
+        grunt.log.ok('getting info about ' + g);
+        fingerprint(g, path.dirname(g)+'/', function(er, data){
+          if (er) { grunt.log.error(er); }
+          datas.push(data);
+          if (gi === (expanded.length-1)){
+            grunt.log.ok('writing info file ' + f);
+            fs.writeFile(f, JSON.stringify(datas), function(er){
+              if (er) { grunt.log.error(er); }
+              if (fi === (files.length-1)){ done(); }
+            });
+          }
+        });
+      });
+    });
   });
 
 
@@ -353,6 +395,7 @@ module.exports = function (grunt) {
     'autoprefixer',
     'concat',
     'ngmin',
+    'mp3data',
     'copy:dist',
     'cdnify',
     'cssmin',
